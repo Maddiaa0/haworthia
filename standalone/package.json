@@ -1,1 +1,6 @@
-{ "dependencies": { "@aztec/cli": "^0.6.5" } }
+{
+  "dependencies": {
+    "@aztec/cli": "^0.7.10",
+    "global": "^4.4.0"
+  }
+}
