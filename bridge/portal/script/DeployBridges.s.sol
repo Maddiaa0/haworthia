@@ -6,7 +6,7 @@ import {Script, console2} from "forge-std/Script.sol";
 
 import {TokenPortal} from "src/bridge/TokenPortal.sol";
 import {HawthoriaPortal } from "src/HawPortal.sol";
-import {ERC20} from "@oz/tokens/ERC20/ERC20.sol";
+// import {ERC20} from "@oz/tokens/ERC20/ERC20.sol";
 
 
 contract DeployBridges is Script {
@@ -24,10 +24,10 @@ contract DeployBridges is Script {
         vm.broadcast();
 
         // Token to use
-        address erc20 = new ERC20("our_token", "token");
+        // address erc20 = new ERC20("our_token", "token");
 
         // Deploy the aztec token bridges
-        toknPortal = new TokenPortal();
+        // toknPortal = new TokenPortal();
 
 
 
