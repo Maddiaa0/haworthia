@@ -3,23 +3,22 @@
 /* eslint-disable */
 import {
     AztecAddress,
-    AztecAddressLike,
     CompleteAddress,
     ContractBase,
     ContractFunctionInteraction,
     ContractMethod,
     DeployMethod,
-    EthAddressLike,
     FieldLike,
     Wallet,
   } from '@aztec/aztec.js';
-  import { ContractAbi } from '@aztec/foundation/abi';
-  import { Fr, Point } from '@aztec/foundation/fields';
-  import { AztecRPC, PublicKey } from '@aztec/types';
-  
-  import TokenContractAbiJson from '../artifacts/token_contract.json' assert { type: 'json' };
-  
-  export const TokenContractAbi = TokenContractAbiJson as ContractAbi;
+import { ContractAbi } from '@aztec/foundation/abi';
+import { Fr, Point } from '@aztec/foundation/fields';
+import { AztecRPC, PublicKey } from '@aztec/types';
+
+import TokenContractAbiJson from './artifacts/token_contract.json' assert { type: 'json' };
+import { AztecAddressLike } from './abi.js';
+
+export const TokenContractAbi = TokenContractAbiJson as ContractAbi;
   
   /**
    * Type-safe interface for contract Token;

@@ -57,14 +57,9 @@ contract HawthoriaBridge {
 
     #[aztec(private)]
     // Using u120s as they are the largest that is allowed
-    // TODO: move caller to be the address type
     fn fundPool(pool_id: u120, amount: u120, asset_bridge: AztecAddress, asset: Field, callerOnL1: EthereumAddress) {
-        
-        // Compute the selector for the on chain message
-
-        // 0x40a29edd
+        // Compute the selector for the on chain message 0x40a29edd
         // let selector = compute_selector("fundPool(uint256,uint256,uint256,address,address)");
-
         let asset_bridge_portal = get_portal_address(asset_bridge.address);
         assert(asset_bridge_portal != 0, "asset bridge portal is 0 (it dunny exist lad)");
 

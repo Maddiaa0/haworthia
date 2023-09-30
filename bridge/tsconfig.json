@@ -19,6 +19,5 @@
       "skipLibCheck": true
     },
     "include": ["src/**/*", "contracts/**/*.json", "circuits/**/*.json"],
-    "exclude": ["node_modules", "**/*.spec.ts", "contracts/**/*.ts"],
-    "references": []
+    "exclude": ["node_modules", "**/*.spec.ts", "contracts/**/*.ts"]
 }

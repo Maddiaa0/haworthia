@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 // Interfaces
-import {IRegistry} from "./IRegistry.sol";
+import {IRegistry} from "./IAlloRegistry.sol";
 import {IStrategy} from "./IStrategy.sol";
 // Internal Libraries
 import {Metadata} from "./Metadata.sol";
@@ -26,6 +26,9 @@ import {Metadata} from "./Metadata.sol";
 /// @author @thelostone-mc <aditya@gitcoin.co>, @0xKurt <kurt@gitcoin.co>, @codenamejason <jason@gitcoin.co>, @0xZakk <zakk@gitcoin.co>, @nfrgosselin <nate@gitcoin.co>
 /// @notice Interface for the Allo contract. It exposes all functions needed to use the Allo protocol.
 interface IAllo {
+    
+    function owner() external view returns (address);
+
     /// ======================
     /// ======= Structs ======
     /// ======================
@@ -99,6 +102,16 @@ interface IAllo {
     /// @notice Emitted when a strategy is removed from the cloneable strategies
     /// @param strategy Address of the strategy removed
     event StrategyRemoved(address strategy);
+
+    function createPool(
+        bytes32 _profileId,
+        address _strategy,
+        bytes memory _initStrategyData,
+        address _token,
+        uint256 _amount,
+        Metadata memory _metadata,
+        address[] memory _managers
+    ) external payable returns (uint256 poolId);
 
     /// ====================================
     /// ==== External/Public Functions =====

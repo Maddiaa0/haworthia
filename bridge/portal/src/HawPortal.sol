@@ -10,6 +10,8 @@ import {TokenPortal} from "src/bridge/TokenPortal.sol";
 import {Hash} from "@aztec/Hash.sol";
 import {IERC20} from "@oz/token/ERC20/IERC20.sol";
 
+import {QVSimpleStrategy} from "@allo/strategies/qv-simple/QVSimpleStrategy.sol";
+
 contract HawthoriaPortal {
 
     // We want to create a portal interaction for performing any portal interactions
