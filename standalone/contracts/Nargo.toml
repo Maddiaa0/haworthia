@@ -1,8 +1,0 @@
-[package]
-name = "hawthoria"
-authors = ["Maddiaa"]
-compiler_version = "0.7.1"
-type = "contract"
-
-[dependencies]
-aztec = { git = "https://github.com/AztecProtocol/aztec-packages", tag = "master", directory = "yarn-project/noir-libs/noir-aztec" }
