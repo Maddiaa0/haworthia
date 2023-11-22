@@ -2,11 +2,11 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+solc = "0.8.19"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 remappings = [
-  "@oz/=lib/openzeppelin-contracts/contracts/",
   "@aztec/=src/aztec/",
-  "@allo/=lib/allo-v2/contracts/"
+  "@allo/=lib/allo-v2/"
 ]

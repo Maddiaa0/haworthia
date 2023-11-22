@@ -1,5 +1,7 @@
 target/
 portal/lib/
+dest/
+log/
 
 lib-cov
 *.seed

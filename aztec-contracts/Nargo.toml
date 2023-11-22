@@ -6,3 +6,4 @@ type = "contract"
 
 [dependencies]
 aztec = { git = "https://github.com/AztecProtocol/aztec-nr", tag = "master", directory = "aztec" }
+authwit = { git = "https://github.com/AztecProtocol/aztec-nr", tag = "master", directory = "authwit" }

@@ -1,19 +1,11 @@
-import TokenPortal from '../../portal/out/TokenPortal.sol/TokenPortal.json' assert { type: 'json' };
-export const {abi: TokenPortalAbi, bytecode: TokenPortalBytecode }  = TokenPortal;
+import TokenPortal from '../../eth-contracts/out/TokenPortal.sol/TokenPortal.json' assert { type: 'json' };
+export const TokenPortalBytecode  = TokenPortal.bytecode.object as `0x${string}`;
+export const {abi: TokenPortalAbi }  = TokenPortal;
 
-import HawthoriaPortal from '../../portal/out/HawPortal.sol/HawthoriaPortal.json' assert { type: 'json' };
-export const {abi: HawthoriaPortalAbi, bytecode: HawthoriaPortalBytecode }  = HawthoriaPortal;
+import HawthoriaPortal from '../../eth-contracts/out/HawPortal.sol/HawthoriaPortal.json' assert { type: 'json' };
+export const HawthoriaPortalBytecode  = HawthoriaPortal.bytecode.object as `0x${string}`;
+export const {abi: HawthoriaPortalAbi }  = HawthoriaPortal;
 
-import Allo from "../../portal/out/IAllo.sol/IAllo.json" assert { type: "json" };
-export const {abi: AlloAbi} = Allo;
-
-import Registry from "../../portal/out/IAlloRegistry.sol/IRegistry.json" assert { type: "json" };
-export const {abi:RegistryAbi} = Registry;
-
-import QVStrategy from "../../portal/out/QVSimpleStrategy.sol/QVSimpleStrategy.json" assert { type: "json" };
-export const {abi: QVStrategyAbi, bytecode: QVStrategyBytecode }  = QVStrategy;
-
-// erc20
-import ERC20 from "../../portal/out/ERC20.sol/ERC20.json" assert { type: "json" };
-export const {abi: ERC20Abi, bytecode:ERC20Bytecode }  = ERC20;
-
+import GitcoinDeployerHelper from "../../eth-contracts/out/GitcoinDeployHelper.sol/GitcoinDeployHelper.json" assert { type: "json" };
+export const GitcoinDeployHelperBytecode  = GitcoinDeployerHelper.bytecode.object as `0x${string}`;
+export const {abi: GitcoinDeployHelperAbi }  = GitcoinDeployerHelper;
