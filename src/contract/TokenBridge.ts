@@ -3,34 +3,33 @@
 /* eslint-disable */
 import {
   AztecAddress,
+  AztecAddressLike,
   CompleteAddress,
+  Contract,
+  ContractArtifact,
   ContractBase,
   ContractFunctionInteraction,
   ContractMethod,
   DeployMethod,
+  EthAddress,
+  EthAddressLike,
   FieldLike,
+  Fr,
+  Point,
+  PublicKey,
   Wallet,
 } from '@aztec/aztec.js';
-import { ContractAbi } from '@aztec/foundation/abi';
-import { Fr, Point } from '@aztec/foundation/fields';
-import { AztecRPC, PublicKey } from '@aztec/types';
 
-import TokenBridgeContractAbiJson from './artifacts/token_bridge_contract.json' assert { type: 'json' };
-import { AztecAddressLike, EthAddressLike } from './abi.js';
+import TokenBridgeContractArtifactJson from './artifacts/token_bridge_contract.json' assert { type: 'json' };
 
-export const TokenBridgeContractAbi = TokenBridgeContractAbiJson as ContractAbi;
+export const TokenBridgeContractArtifact = TokenBridgeContractArtifactJson as ContractArtifact;
 
 /**
  * Type-safe interface for contract TokenBridge;
  */
 export class TokenBridgeContract extends ContractBase {
-  private constructor(
-    /** The deployed contract's complete address. */
-    completeAddress: CompleteAddress,
-    /** The wallet. */
-    wallet: Wallet,
-  ) {
-    super(completeAddress, TokenBridgeContractAbi, wallet);
+  private constructor(completeAddress: CompleteAddress, wallet: Wallet, portalContract = EthAddress.ZERO) {
+    super(completeAddress, TokenBridgeContractArtifact, wallet, portalContract);
   }
 
   /**
@@ -39,27 +38,18 @@ export class TokenBridgeContract extends ContractBase {
    * @param wallet - The wallet to use when interacting with the contract.
    * @returns A promise that resolves to a new Contract instance.
    */
-  public static async at(
-    /** The deployed contract's address. */
-    address: AztecAddress,
-    /** The wallet. */
-    wallet: Wallet,
-  ) {
-    const extendedContractData = await wallet.getExtendedContractData(address);
-    if (extendedContractData === undefined) {
-      throw new Error('Contract ' + address.toString() + ' is not deployed');
-    }
-    return new TokenBridgeContract(extendedContractData.getCompleteAddress(), wallet);
+  public static async at(address: AztecAddress, wallet: Wallet) {
+    return Contract.at(address, TokenBridgeContract.artifact, wallet) as Promise<TokenBridgeContract>;
   }
 
   /**
    * Creates a tx to deploy a new instance of this contract.
    */
-  public static deploy(rpc: AztecRPC) {
+  public static deploy(wallet: Wallet, token: AztecAddressLike) {
     return new DeployMethod<TokenBridgeContract>(
       Point.ZERO,
-      rpc,
-      TokenBridgeContractAbi,
+      wallet,
+      TokenBridgeContractArtifact,
       Array.from(arguments).slice(1),
     );
   }
@@ -67,20 +57,20 @@ export class TokenBridgeContract extends ContractBase {
   /**
    * Creates a tx to deploy a new instance of this contract using the specified public key to derive the address.
    */
-  public static deployWithPublicKey(rpc: AztecRPC, publicKey: PublicKey) {
+  public static deployWithPublicKey(publicKey: PublicKey, wallet: Wallet, token: AztecAddressLike) {
     return new DeployMethod<TokenBridgeContract>(
       publicKey,
-      rpc,
-      TokenBridgeContractAbi,
+      wallet,
+      TokenBridgeContractArtifact,
       Array.from(arguments).slice(2),
     );
   }
 
   /**
-   * Returns this contract's ABI.
+   * Returns this contract's artifact.
    */
-  public static get abi(): ContractAbi {
-    return TokenBridgeContractAbi;
+  public static get artifact(): ContractArtifact {
+    return TokenBridgeContractArtifact;
   }
 
   /** Type-safe wrappers for the public methods exposed by the contract. */
@@ -95,10 +85,10 @@ export class TokenBridgeContract extends ContractBase {
     /** _initialize(token: struct) */
     _initialize: ((token: AztecAddressLike) => ContractFunctionInteraction) & Pick<ContractMethod, 'selector'>;
 
-    /** claim_private(amount: field, secret_hash_for_redeeming_minted_notes: field, canceller: struct, msg_key: field, secret_for_L1_to_L2_message_consumption: field) */
+    /** claim_private(secret_hash_for_redeeming_minted_notes: field, amount: field, canceller: struct, msg_key: field, secret_for_L1_to_L2_message_consumption: field) */
     claim_private: ((
-      amount: FieldLike,
       secret_hash_for_redeeming_minted_notes: FieldLike,
+      amount: FieldLike,
       canceller: EthAddressLike,
       msg_key: FieldLike,
       secret_for_L1_to_L2_message_consumption: FieldLike,
@@ -115,10 +105,19 @@ export class TokenBridgeContract extends ContractBase {
     ) => ContractFunctionInteraction) &
       Pick<ContractMethod, 'selector'>;
 
-    /** exit_to_l1_private(recipient: struct, token: struct, amount: field, callerOnL1: struct, nonce: field) */
+    /** compute_note_hash_and_nullifier(contract_address: field, nonce: field, storage_slot: field, serialized_note: array) */
+    compute_note_hash_and_nullifier: ((
+      contract_address: FieldLike,
+      nonce: FieldLike,
+      storage_slot: FieldLike,
+      serialized_note: FieldLike[],
+    ) => ContractFunctionInteraction) &
+      Pick<ContractMethod, 'selector'>;
+
+    /** exit_to_l1_private(token: struct, recipient: struct, amount: field, callerOnL1: struct, nonce: field) */
     exit_to_l1_private: ((
-      recipient: EthAddressLike,
       token: AztecAddressLike,
+      recipient: EthAddressLike,
       amount: FieldLike,
       callerOnL1: EthAddressLike,
       nonce: FieldLike,

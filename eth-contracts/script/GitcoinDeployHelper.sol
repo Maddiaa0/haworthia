@@ -34,7 +34,7 @@ contract GitcoinDeployHelper {
       registry.initialize(_manager);
 
       allo = new Allo();
-      allo.initialize(address(registry), payable(_manager), 1e16, 0);
+      allo.initialize(msg.sender, address(registry), payable(_manager), 1e16, 0);
 
       strategy = new DonationVotingStrategy(address(allo), "DonationVotingStrategy");
 

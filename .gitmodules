@@ -1,12 +1,6 @@
-[submodule "bridge/portal/lib/forge-std"]
-	path = bridge/portal/lib/forge-std
-	url = https://github.com/foundry-rs/forge-std
-[submodule "bridge/portal/lib/openzeppelin-contracts"]
-	path = bridge/portal/lib/openzeppelin-contracts
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-[submodule "bridge/portal/lib/allo-v2"]
-	path = bridge/portal/lib/allo-v2
-	url = https://github.com/allo-protocol/allo-v2
 [submodule "portal/lib/allo-v2"]
 	path = portal/lib/allo-v2
 	url = https://github.com/allo-protocol/allo-v2
+[submodule "portal/lib/openzeppelin-contracts"]
+	path = portal/lib/openzeppelin-contracts-local
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts

@@ -18,6 +18,6 @@
       "composite": true,
       "skipLibCheck": true
     },
-    "include": ["src/**/*", "contracts/**/*.json", "circuits/**/*.json"],
-    "exclude": ["node_modules", "**/*.spec.ts", "contracts/**/*.ts"]
+    "include": ["src/**/*", "src/**/*.json", "eth-contracts/**/*.json", "aztec-contracts/**/*.json"],
+    "exclude": ["node_modules", "**/*.spec.ts"]
 }

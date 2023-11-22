@@ -1,245 +1,229 @@
-import { Fr, GrumpkinScalar } from '@aztec/foundation/fields';
-import { createAztecRpcClient, AztecRPC, AccountWallet, TxStatus, getSchnorrAccount, getSandboxAccountsWallets, CheatCodes } from '@aztec/aztec.js';
-import { HawthoriaBridgeContract, HawthoriaBridgeContractAbi } from './contract/HawthoriaBridge.js';
-import { getContract } from 'viem';
-import { ethers } from 'ethers';
-import { AlloAbi, ERC20Abi, ERC20Bytecode, QVStrategyAbi, QVStrategyBytecode, RegistryAbi, TokenPortalAbi, TokenPortalBytecode } from './contract/solidity.js';
-import { TokenContract } from './contract/token.js';
-import { AbiCoder } from 'ethers';
-import { TokenBridgeContract } from './contract/token_bridge.js';
-import { AztecRPCServer } from '@aztec/aztec-rpc';
+import {
+    AccountWallet,
+    AztecAddress,
+    DebugLogger,
+    EthAddress,
+    Fr,
+    computeAuthWitMessageHash,
+    deployL1Contract,
+    getSandboxAccountsWallets,
+    PXE,
+    createPXEClient,
+    waitForSandbox,
+    createDebugLogger,
+  } from '@aztec/aztec.js';
+  import {
+    HawthoriaPortalAbi,
+    HawthoriaPortalBytecode,
+    GitcoinDeployHelperAbi,
+    GitcoinDeployHelperBytecode,
+  } from './contract/solidity.js';
+  import { HawthoriaContract } from "./contract/Hawthoria.js";
+  
+  import { createPublicClient, createWalletClient, getContract, http } from 'viem';
+  
+  import { delay } from './utils.js';
+  import { CrossChainTestHarness } from './cross_chain_test_harness.js';
+  import { mnemonicToAccount } from 'viem/accounts';
+  import { foundry } from 'viem/chains';
 
+  const AnvilTestMnemonic = "test test test test test test test test test test test junk";
+  const hdAccount = mnemonicToAccount(AnvilTestMnemonic);
 
-const SANDBOX_URL = process.env['SANDBOX_URL'] || 'http://localhost:8080';
-const ETH_URL = process.env['ETH_URL'] || 'http://localhost:8545';
-const ANVIL_WALLET = "2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6";
-const ANVIL_ADDRESS = "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720";
+  const PXE_URL = process.env['PXE_URL '] || 'http://localhost:8080';
+  const ETH_URL = process.env['ETH_URL'] || 'http://localhost:8545';
+  const ANVIL_WALLET = "2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6";
+  const ANVIL_ADDRESS = "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720";
 
-const ALLO = "0x79536CC062EE8FAFA7A19a5fa07783BD7F792206";
-const ALLO_REGISTRY = "0xAEc621EC8D9dE4B524f4864791171045d6BBBe27";
+  
+  describe('e2e_gitcoin', () => {
+    let logger: DebugLogger;
+    let teardown: () => Promise<void>;
+    let pxe: PXE;
+    let wallets: AccountWallet[];
+  
+    let user1Wallet: AccountWallet;
+    let ownerAddress: AztecAddress;
+  
+    let tokenHarness: CrossChainTestHarness;
+  
+    let gitcoinPortal: any;
+    let gitcoinL2Contract: HawthoriaContract;
+  
+    const DONATION_RECIPIENT = EthAddress.fromString('0xA15BB66138824a1c7167f5E85b957d04Dd34E468');
+    let DONATEE: EthAddress;
+    let underlyingERC20Address: EthAddress;
+    let STRATEGY: EthAddress;
+    let ALLO: EthAddress;
+    let poolId: bigint;
 
-const deployContract = async () => {
-    const rpc = await createAztecRpcClient(SANDBOX_URL);
-    const accounts = await rpc.getRegisteredAccounts();
-    await console.log(accounts);
-
-    const deployerWallet = accounts[0];
-    const salt = Fr.random();
-
-    const tx = HawthoriaBridgeContract.deploy(rpc).send({ contractAddressSalt: salt });
-    console.log(`Tx sent with hash ${await tx.getTxHash()}`);
-
-    await tx.isMined({ interval: 0.1 });
-    const receiptAfterMined = await tx.getReceipt();
-    console.log(`Status: ${receiptAfterMined.status}`);
-    console.log(`Contract address: ${receiptAfterMined.contractAddress}`);
-};
-
-
-
-describe("Hawthoria Bridge", () => {
-
-    let rpc: AztecRPC;
-    let account: AccountWallet;
-    let kill: () => Promise<void>;
-
-    let provider: ethers.JsonRpcProvider;
-    let wallet: ethers.Wallet;
-
-    let portal: ethers.Contract;
-    let hawthoria: ethers.Contract;
-
-    let allo: ethers.Contract;
-    let registry: ethers.Contract;
-    let ethToken: ethers.Contract;
-
-    let aztecToken: TokenContract;
-    let aztecTokenBridge: TokenBridgeContract;
-    let cc: CheatCodes;
-
-
+    let registryAddress: EthAddress;
+  
     beforeEach(async () => {
-        rpc = createAztecRpcClient(SANDBOX_URL);
-        [account] = await getSandboxAccountsWallets(rpc);
-        cc = await CheatCodes.create(ETH_URL, rpc);
+        logger = createDebugLogger('e2e_gitcoin');
 
-        // const { node, rpcServer, l1Contracts, stop }  = await createSandbox();
-        // rpc= rpcServer;
-        // kill = stop;
-        // ({rpcServer: rpc, stop}) = await createSandbox();
-        let key = GrumpkinScalar.random();
-        account = await getSchnorrAccount(rpc, key, key).waitDeploy();
+      // Connect to a running sandbox
+      // Make sure you have anvil & the aztec sandbox running
+      // ( you can run the sandbox with yarn start:sandbox in another terminal )
+      pxe = createPXEClient(PXE_URL);
+      await waitForSandbox();
+      wallets = await getSandboxAccountsWallets(pxe);
 
-        provider = new ethers.JsonRpcProvider(ETH_URL);
-        wallet = new ethers.Wallet(ANVIL_WALLET, provider);
+      // Get the registry address
+      const nodeInfo = await pxe.getNodeInfo();
+      registryAddress = nodeInfo.l1ContractAddresses.registryAddress;
 
-        let portalDeployer = new ethers.ContractFactory(TokenPortalAbi, TokenPortalBytecode, wallet);
-        let hawthoriaDeployer = new ethers.ContractFactory(TokenPortalAbi, TokenPortalBytecode, wallet);
-
-        const portalDeployed = await (await portalDeployer.deploy()).waitForDeployment();
-        const hawDeployed = await (await hawthoriaDeployer.deploy()).waitForDeployment();
-
-        const portalAddress = await (await portalDeployed).getAddress();
-        const hawthoriaAddress = await (await hawDeployed).getAddress();
-
-        portal = new ethers.Contract(portalAddress, TokenPortalAbi, wallet);
-        hawthoria = new ethers.Contract(hawthoriaAddress, TokenPortalAbi, wallet);
-
-        allo = new ethers.Contract(ALLO, AlloAbi, wallet);
-        registry = new ethers.Contract(ALLO_REGISTRY, RegistryAbi, wallet);
-        
-
-
-        // Deploy the token contracts
-        // l2
-        console.log("Deploying token on l2");
-        const tokenDeployReceipt = await TokenContract.deploy(account).send().wait();
-        if (tokenDeployReceipt .status !== TxStatus.MINED) throw new Error(`Deploy token tx status is ${tokenDeployReceipt.status}`);
-        aztecToken = await TokenContract.at(tokenDeployReceipt.contractAddress!, account);
-        console.log("Deployed token on l2 @ ", aztecToken.address);
-
-        // Deploy bridge on l2
-        console.log("Deploying bridge on l2");
-        const bridgeDeployReceipt = await TokenBridgeContract.deploy(account).send().wait();
-        if (bridgeDeployReceipt  .status !== TxStatus.MINED) throw new Error(`Deploy token tx status is ${bridgeDeployReceipt .status}`);
-        aztecTokenBridge = await TokenBridgeContract.at(bridgeDeployReceipt.contractAddress!, account);
-        console.log("Deployed bridge on l2 @ ", aztecTokenBridge.address);
-
-       
-        // l1
-        console.log("Deploying ERC20");
-        let erc20Deployer = new ethers.ContractFactory(ERC20Abi, ERC20Bytecode, wallet);
-        const erc20Deployed = await (await erc20Deployer.deploy("MOCK","MOCK")).waitForDeployment();
-        const erc20Address = await erc20Deployed.getAddress();
-        ethToken = new ethers.Contract(erc20Address, ERC20Abi, wallet);
-        console.log("Deployed ERC20 @ ", erc20Address);
-
-        // Create a profile on allo
-        const profileNonce = Fr.random().toBigInt(); // todo; make random
-        const name = "maddiaa";
-        const metadata = {
-            protocol: 1,
-            pointer: "abcd" // IPFS hash
-        };
-        const address = ANVIL_ADDRESS;
-        const members = [address];
-        console.log("Registring on allo");
-
-        const [profileId] = await registry.createProfile.staticCallResult(profileNonce, name, metadata, address, members);
-        console.log(profileId);
-        const profileTx = await (await registry.createProfile.send(profileNonce, name, metadata, address, members)).wait();
-
-        console.log("Confirming owner of profile");
-        const isOwner = await registry.isOwnerOfProfile(profileId, address);
-        console.log(isOwner);
-
-        // Get logs from a tx
-        console.log("Registered on allo w/ profileId: ", profileTx);
-
-        // Create a pool using te profile ID
-        console.log("Deploying allo strategy");
-        let stratDeployer = new ethers.ContractFactory(QVStrategyAbi, QVStrategyBytecode, wallet);
-        const stratName = Math.random().toString(36).substring(7);
-        const stratDeployed = await (await stratDeployer.deploy(ALLO, stratName)).waitForDeployment();
-        const stratAddress = await (await stratDeployed).getAddress();
-        let strat = new ethers.Contract(stratAddress, QVStrategyAbi, wallet);
-        console.log("deployed allo strategy @ ", stratAddress);
-
-        // Create a pool using the profile ID and strategy
-
-        // make a clonable strat
-        console.log("Adding strat to clonable strats");
-        const [alloAdmin] = await allo.owner.staticCallResult();
-        console.log("Allo admin: ", alloAdmin);
-        cc.eth.startImpersonating(alloAdmin);
-        const addTx = await allo.addToCloneableStrategies(stratAddress);
-        await addTx.wait();
-        cc.eth.stopImpersonating(alloAdmin);
-        const isClonable = await allo.isCloneableStrategy(stratAddress, {from: alloAdmin});
-        console.log("Is clonable: ", isClonable);
-
-        // data to pass to allo initialize
-        function getTimestamp(secondsOffset: number): number {
-            const date = new Date();
-            date.setSeconds(date.getSeconds() + secondsOffset);
-            return Math.floor(date.getTime() / 1000);
-        }
-        
-        const registrationStartTime: number = getTimestamp(0); // now
-        const registrationEndTime: number = getTimestamp(7 * 24 * 60 * 60); // one week from now
-        const allocationStartTime: number = getTimestamp(14 * 24 * 60 * 60); // two weeks from now
-        const allocationEndTime: number = getTimestamp(30 * 24 * 60 * 60); // one month from now
-        const initializeParams = {
-            registryGating: false,
-            metadataRequired: true,
-            reviewThreshold: 2,
-            registrationStartTime,
-            registrationEndTime,
-            allocationStartTime,
-            allocationEndTime, 
-        };
-        const abiTypes = [
-            "bool",    // registryGating
-            "bool",    // metadataRequired
-            "uint256", // reviewThreshold
-            "uint64",  // registrationStartTime
-            "uint64",  // registrationEndTime
-            "uint64",  // allocationStartTime
-            "uint64"   // allocationEndTime
+      const viemWalletClient = createWalletClient({
+        account: hdAccount,
+        chain: foundry,
+        transport: http(ETH_URL)
+      });
+      const viemPublicClient = createPublicClient({
+        chain: foundry,
+        transport: http(ETH_URL)
+      });
+  
+      {
+        logger('Deploying Gitcoin contracts and setup');
+        // Gitcoin deploy helper.
+        const gitcoinHelper = await deployL1Contract(
+            viemWalletClient,
+            viemPublicClient,
+          GitcoinDeployHelperAbi,
+          GitcoinDeployHelperBytecode,
+          [DONATION_RECIPIENT.toString()],
+        );
+        const helper = getContract({
+          address: gitcoinHelper.toString(),
+          abi: GitcoinDeployHelperAbi,
+            walletClient: viemWalletClient ,
+            publicClient: viemPublicClient 
+        });
+  
+        DONATEE = EthAddress.fromString(helper.address);
+  
+        const info = await helper.read.info() as any; // string, string, string, uint256
+        underlyingERC20Address = EthAddress.fromString(info[0]);
+        STRATEGY = EthAddress.fromString(info[1]);
+        ALLO = EthAddress.fromString(info[2]);
+        poolId = info[3];
+      }
+  
+      tokenHarness = await CrossChainTestHarness.new(
+        pxe,
+        viemPublicClient,
+        viemWalletClient,
+        wallets[0],
+        logger,
+        underlyingERC20Address,
+      );
+  
+      ownerAddress = tokenHarness.ownerAddress;
+      user1Wallet = wallets[0];
+      logger('Successfully deployed token contracts');
+  
+      // Deploy the github donation portal and stuff.
+      {
+        const gitcoinPortalAddress = await deployL1Contract(
+          viemWalletClient,
+          viemPublicClient,
+          HawthoriaPortalAbi,
+          HawthoriaPortalBytecode,
+        );
+        gitcoinPortal = getContract({
+          address: gitcoinPortalAddress.toString(),
+          abi: HawthoriaPortalAbi,
+          walletClient: viemWalletClient,
+          publicClient: viemPublicClient,
+        });
+  
+        logger(`Deployed Gitcoin Portal at ${gitcoinPortalAddress}`);
+  
+        gitcoinL2Contract = await HawthoriaContract.deploy(user1Wallet)
+          .send({ portalContract: gitcoinPortalAddress })
+          .deployed();
+        const args = [
+          tokenHarness.tokenPortal.address.toString(),
+          registryAddress.toString(),
+          ALLO.toString(),
+          gitcoinL2Contract.address.toString(),
         ];
-
-        // Abi Encode the initialize params to send with pool creation tx
-        // Create an instance of AbiCoder
-        const abiCoder = new ethers.AbiCoder();
-
-        // Use the encode method to ABI-encode your struct
-        const encodedData = abiCoder.encode(abiTypes, [...Object.values(initializeParams)]);
-        console.log(encodedData);
-
-        // Create pool
-        const fundAmount = 0;
-        const poolId = await allo.createPool.staticCallResult(
-            profileId,      // bytes32
-            stratAddress,   // address,
-            encodedData,    // strategy init data
-            erc20Address,   // token address across the aztec bridge
-            fundAmount,     // deposit amount
-            metadata,       // pool metadata
-            [ANVIL_ADDRESS] // list of managers
+        await gitcoinPortal.write.initialize(args, {} as any);
+      }
+    }, 100_000);
+  
+    // afterEach(async () => {
+    //   await teardown();
+    // });
+  
+    it('Donate funds on Allo from inside Aztec', async () => {
+      // Get funds into rollup
+      {
+        // Mint funds and deposit into the rollup
+        const bridgeAmount = 10n * 10n ** 18n;
+        await tokenHarness.mintTokensOnL1(bridgeAmount);
+  
+        const [secretForL2MessageConsumption, secretHashForL2MessageConsumption] =
+          await tokenHarness.generateClaimSecret();
+        const [secretForRedeemingMintedNotes, secretHashForRedeemingMintedNotes] =
+          await tokenHarness.generateClaimSecret();
+  
+        const messageKey = await tokenHarness.sendTokensToPortalPrivate(
+          secretHashForRedeemingMintedNotes,
+          bridgeAmount,
+          secretHashForL2MessageConsumption,
         );
-        const poolDeploymentTx = await allo.createPool(
-            profileId,      // bytes32
-            stratAddress,   // address,
-            encodedData,    // strategy init data
-            erc20Address,   // token address across the aztec bridge
-            fundAmount,     // deposit amount
-            metadata,       // pool metadata
-            [ANVIL_ADDRESS] // list of managers
+  
+        await delay(5000); /// waiting 5 seconds.
+  
+        // Perform an unrelated transaction on L2 to progress the rollup. Here we mint public tokens.
+        const unrelatedMintAmount = 99n;
+        await tokenHarness.mintTokensPublicOnL2(unrelatedMintAmount);
+        await tokenHarness.expectPublicBalanceOnL2(ownerAddress, unrelatedMintAmount);
+  
+        // Consume L1-> L2 message and mint private tokens on L2
+        await tokenHarness.consumeMessageOnAztecAndMintSecretly(
+          secretHashForRedeemingMintedNotes,
+          bridgeAmount,
+          messageKey,
+          secretForL2MessageConsumption,
         );
-        await poolDeploymentTx.wait();
-
-        console.log("poolid: ", poolId);
-
-
-        // Try and fund the same 
-
-            
-
-
+  
+        await tokenHarness.redeemShieldPrivatelyOnL2(bridgeAmount, secretForRedeemingMintedNotes);
+      }
+  
+      // We need to setup an approval to burn the assets to exit.
+      const nonce = Fr.random();
+      const amount = 10n ** 18n;
+      const burnMessageHash = await computeAuthWitMessageHash(
+        gitcoinL2Contract.address,
+        tokenHarness.l2Token.methods.unshield(ownerAddress, gitcoinL2Contract.address, amount, nonce).request(),
+      );
+      await user1Wallet.createAuthWitness(Fr.fromBuffer(burnMessageHash));
+  
+      // Then donate
+      await gitcoinL2Contract.methods
+        .donate(poolId, DONATEE, amount, tokenHarness.l2Token.address, tokenHarness.l2Bridge.address, nonce)
+        .send()
+        .wait();
+  
+      const claimBefore = await gitcoinPortal.read.getClaim([
+        STRATEGY.toString(),
+        underlyingERC20Address.toString(),
+        DONATEE.toString(),
+      ]);
+  
+      logger(`Pending claim ${claimBefore}`);
+  
+      await gitcoinPortal.write.donate([poolId, DONATEE.toString(), amount, false], {} as any);
+  
+      const claimAfter = await gitcoinPortal.read.getClaim([
+        STRATEGY.toString(),
+        underlyingERC20Address.toString(),
+        DONATEE.toString(),
+      ]);
+  
+      logger(`Pending claim ${claimAfter}`);
+      expect(claimAfter).toEqual(claimBefore + amount);
     }, 60_000);
-
-    it("E2E", async () => {
-        // Deploy an allo pool
-        {
-            // allo.
-
-
-        }        
-
-
-    });
-
-
-    // afterAll(() => kill)
-    afterAll(() => {})
-})
+  });
