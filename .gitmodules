@@ -7,3 +7,6 @@
 [submodule "bridge/portal/lib/allo-v2"]
 	path = bridge/portal/lib/allo-v2
 	url = https://github.com/allo-protocol/allo-v2
+[submodule "portal/lib/allo-v2"]
+	path = portal/lib/allo-v2
+	url = https://github.com/allo-protocol/allo-v2
